@@ -41,8 +41,16 @@ async def upload(file: UploadFile | None = None):
 
     for i, col in enumerate(df.iloc[0]):
         df = df.rename(columns={i: col})
+
     df = df.iloc[1:]
 
+    columns = ['uid', 'org', 'work_location', 'certification', 'issue_date', 'type']
+
+    if columns != list(df.columns):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File not supported"
+        )
         
     df.loc[df.type == 'external certification', 'issue_date'] = df['certification'].str.split(
     '(').str[::-1].str[0].str.split(')').str[0]
