@@ -51,7 +51,14 @@ async def upload(file: UploadFile | None = None):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="File not supported"
         )
-        
+    
+    if df.shape[0] <= 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Data should have at least one row of data"
+    )
+    
+    
     df.loc[df.type == 'external certification', 'issue_date'] = df['certification'].str.split(
     '(').str[::-1].str[0].str.split(')').str[0]
     
