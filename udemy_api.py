@@ -32,7 +32,7 @@ def get_popular_courses():
 
         for course in data['results']:
             if course['num_subscribers'] > 1000:
-                popular_courses.append(course['title'])
+                popular_courses.append([course['title'], course['num_subscribers']])
 
     udemy_courses = pd.DataFrame(popular_courses)
 

@@ -4,6 +4,7 @@ from fastapi import FastAPI, UploadFile, status, HTTPException
 from fastapi.responses import StreamingResponse
 import pandas as pd
 
+from udemy_api import get_popular_courses
 from data_cleaning import clean_dataset, convert_df_to_csv_string, read_excel_file
 from data_analysis import calculate_certification_counts
 
@@ -95,4 +96,31 @@ async def graph2():
             'group': index[i],
             'value': values[i]
         })
+        
+    return dataF
+
+@app.get("/graph3")
+async def graph3():
+    if cleaned_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No data was uploaded"
+        )
+    
+    ucourses = get_popular_courses()
+    top = 10
+
+    ucourses[1] = ucourses[1].astype(int)
+    ucourses = ucourses.drop_duplicates(subset=[0])
+    ucourses = ucourses.sort_values(by=[1], ascending=False)
+    
+    topcourses = ucourses.head(top)
+    dataF = []
+
+    for i in range(top):
+        dataF.append({
+            'group': topcourses.iloc[i][0],
+            'value': int(topcourses.iloc[i][1])
+        })
+    
     return dataF
