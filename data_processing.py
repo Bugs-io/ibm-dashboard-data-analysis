@@ -4,6 +4,9 @@ from fastapi import status, HTTPException
 import openpyxl
 from pandas import DataFrame
 
+from domain import Certification
+
+
 def clean_dataset(df):
     df = df.iloc[1:]
     columns = ['uid', 'org', 'work_location', 'certification', 'issue_date', 'type']
@@ -35,10 +38,38 @@ def clean_dataset(df):
     return df
 
 
+def get_most_attended_certifications(df, top=5, since_years=None):
+    df = df.copy()
+
+    if since_years is not None:
+        df = filter_since_years(df, "issue_date", since_years)
+
+    certification_attendance_count = df["certification"].value_counts()
+    certification_attendance_count = certification_attendance_count.head(top)
+
+    top_attended_certifications = []
+
+    for name, attendees in certification_attendance_count.items():
+        certification = Certification(name=name, total_attendees=attendees)
+        top_attended_certifications.append(certification)
+
+    return top_attended_certifications
+
+
+def filter_since_years(df, date_column_name, since_years) -> pd.DataFrame:
+    current_date = pd.to_datetime("today")
+    start_date = current_date - pd.DateOffset(years=since_years)
+
+    date_column = pd.to_datetime(df[date_column_name])
+
+    return df[df.loc[date_column.between(start_date, current_date)]]
+
+
 def convert_df_to_csv_string(df):
     stream = io.StringIO()
     df.to_csv(stream, index=False)
     return stream.getvalue()
+
 
 def read_excel_file(content):
     wb = openpyxl.load_workbook(io.BytesIO(content))
