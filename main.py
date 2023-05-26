@@ -96,7 +96,7 @@ async def graph2():
             'group': index[i],
             'value': values[i]
         })
-        
+
     return dataF
 
 @app.get("/graph3")
@@ -121,6 +121,34 @@ async def graph3():
         dataF.append({
             'group': topcourses.iloc[i][0],
             'value': int(topcourses.iloc[i][1])
+        })
+    
+    return dataF
+
+@app.get("/graph4")
+async def graph4():
+    if cleaned_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No data was uploaded"
+        )
+    
+    certifications = (
+        cleaned_data[['certification', 'issue_date']]
+        .assign(issue_date=lambda df: pd.to_datetime(df['issue_date']).dt.year)
+        .groupby(['issue_date'])
+        .count()
+        .reset_index()
+    )
+
+    cert = certifications['certification'].to_list()
+    date = certifications['issue_date'].to_list()
+
+    dataF = []
+    for i in range(len(cert)):
+        dataF.append({
+            'group': date[i],
+            'value': cert[i]
         })
     
     return dataF
