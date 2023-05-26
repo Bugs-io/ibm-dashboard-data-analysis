@@ -4,15 +4,12 @@ from fastapi import FastAPI, UploadFile, status, HTTPException
 from fastapi.responses import StreamingResponse
 import pandas as pd
 
-from udemy_api import get_popular_courses
-from data_processing import clean_dataset, convert_df_to_csv_string, read_excel_file
+from data_cleaning import clean_dataset, convert_df_to_csv_string, read_excel_file
+from data_analysis import calculate_certification_counts
 
 app = FastAPI()
 
 cleaned_data = None
-
-excluded_words = ['Exam', 'Intermediate', 'Guide', 'Project', 'Level', 'Functional', 'Content', 'Support', 'Professional', 'by', 'Streams', 'Framework', 'Portal', 'Language', '10', '2019', '2020', '2021', '2022', '2023', 'Programming', 'Application', '&', 'Using', 'Working', 'Environment', 'The', 'Way', 'Build', 'Part', 'a', 'an', 'and', 'of', 'the', 'to',
-                  'with', 'With', 'Building', 'A', 'Applications', 'App', 'Market', 'Software', 'Advanced', 'Parallel', 'Coding', 'Web', '1', '2', '3', 'Learning', 'Introduction', 'Development', 'in', '-', 'Server', 'Studio', 'Practice', 'your', 'for', 'using', 'from', ' ', '', 'on', 'us', 'Visualization']
 
 EXCEL_MIME_TYPE = [
         "application/vnd.ms-excel",
@@ -59,28 +56,7 @@ async def graph1():
         )
     certifications = list(cleaned_data['certification'].unique())
 
-    cert_match_count = set()
-    word_match_count = {}
-
-    udemy_courses = get_popular_courses()
-
-
-    for ucourse in udemy_courses[0]:
-        ucourse_words = ucourse.split(' ')
-        for certification in certifications:
-            certification_words = certification.split(' ')
-            for word in certification_words:
-                if word not in excluded_words and word in ucourse_words:
-
-                    if certification not in cert_match_count:
-                        cert_match_count.add(certification)
-
-                    if word in word_match_count:
-                        word_match_count[word] += 1
-
-                    else:
-                        word_match_count[word] = 1
-        
+    cert_match_count = calculate_certification_counts(certifications)
     cert_total_count = len(certifications)
 
     graphData = {
@@ -91,4 +67,32 @@ async def graph1():
     dataF = pd.DataFrame(graphData)
     dataF = dataF.to_dict(orient='records')
     
+    return dataF
+
+@app.get("/graph2")
+async def graph2():
+    if cleaned_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No data was uploaded"
+        )
+    certifications = list(cleaned_data['certification'].unique())
+
+    cert_match_count = calculate_certification_counts(certifications)
+    cert_match_count = pd.Series(cert_match_count)
+    cert_match_count = cert_match_count.sort_values(ascending=False)
+
+    top = 10
+    topcerts = cert_match_count.head(top)
+
+    index = topcerts.index.tolist()
+    values = topcerts.values.tolist()
+
+    dataF = []
+
+    for i in range(top):
+        dataF.append({
+            'group': index[i],
+            'value': values[i]
+        })
     return dataF
