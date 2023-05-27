@@ -59,15 +59,15 @@ def get_most_attended_certifications(df, top=5, since_years=None):
 def filter_since_years(df, date_column_name, since_years) -> pd.DataFrame:
     current_date = pd.to_datetime("today")
     start_date = current_date - pd.DateOffset(years=since_years)
-
     date_column = pd.to_datetime(df[date_column_name])
 
-    return df[df.loc[date_column.between(start_date, current_date)]]
+    return df.loc[date_column.between(start_date, current_date)]
 
 
 def convert_df_to_csv_string(df):
     stream = io.StringIO()
     df.to_csv(stream, index=False)
+
     return stream.getvalue()
 
 

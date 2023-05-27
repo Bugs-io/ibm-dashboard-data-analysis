@@ -1,12 +1,13 @@
 from fastapi.exceptions import HTTPException
 import magic
-from fastapi import FastAPI, UploadFile, status, HTTPException
+from io import BytesIO 
+from fastapi import FastAPI, UploadFile, status, HTTPException, Form
 from fastapi.responses import StreamingResponse, JSONResponse
 import pandas as pd
-from pydantic import BaseModel
 
 from udemy_api import get_popular_courses
 from data_processing import clean_dataset, convert_df_to_csv_string, read_excel_file, get_most_attended_certifications
+from dto import MostAttendedCertificationsRequestDTO
 
 app = FastAPI()
 
@@ -96,25 +97,29 @@ async def graph1():
 
     return dataF
 
-class Data(BaseModel):
-    since_years: int
-    limit: int
+
+async def get_dataframe_from_csv_file(file: UploadFile):
+    csv_content = await file.read()
+    csv = BytesIO(csv_content)
+    df = pd.read_csv(csv)
+    return df
 
 
 @app.post("/graphs/query-most-attended-certifications")
-async def query_most_attended_certifications(dataset: UploadFile | None = None):
-    print("llegue hasta aqui", dataset)
+async def query_most_attended_certifications(
+        dataset: UploadFile | None = None,
+        limit: int = Form(...),
+        since_years: int = Form(...),
+        ):
+    print("the limit is: ", limit, "the since_years is: ", since_years)
     if not dataset:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No file was uploaded"
         )
 
-    print(dataset, 5, 5)
-
-    df = pd.read_csv(dataset.file)
-
-    most_attended_certifications = get_most_attended_certifications(df, 5, 5)
+    df = await get_dataframe_from_csv_file(dataset)
+    most_attended_certifications = get_most_attended_certifications(df, limit, since_years)
 
     response_payload = {
             "count": len(most_attended_certifications),
