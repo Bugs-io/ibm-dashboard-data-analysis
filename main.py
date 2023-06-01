@@ -168,6 +168,11 @@ async def graph5():
 
 @app.get("/graph6{uid}")
 async def graph6(uid: str):
+    if cleaned_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No data was uploaded"
+        )
     certifications = get_certifications(cleaned_data, uid)
     dataF = get_certifications_data(certifications)
 
