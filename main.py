@@ -7,6 +7,7 @@ import pandas as pd
 from udemy_api import get_popular_courses
 from data_cleaning import clean_dataset, convert_df_to_csv_string, read_excel_file
 from data_analysis import calculate_certification_counts
+from certs_categories import get_certifications_data, get_certifications
 
 app = FastAPI()
 
@@ -151,4 +152,23 @@ async def graph4():
             'value': cert[i]
         })
     
+    return dataF
+
+@app.get("/graph5")
+async def graph5():
+    if cleaned_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No data was uploaded"
+        )
+    certifications = list(cleaned_data['certification'].unique())
+    dataF = get_certifications_data(certifications)
+
+    return dataF
+
+@app.get("/graph6{uid}")
+async def graph6(uid: str):
+    certifications = get_certifications(cleaned_data, uid)
+    dataF = get_certifications_data(certifications)
+
     return dataF
