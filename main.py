@@ -1,6 +1,6 @@
 from fastapi.exceptions import HTTPException
 import magic
-from fastapi import FastAPI, UploadFile, status, HTTPException
+from fastapi import FastAPI, UploadFile, status, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 import pandas as pd
 
@@ -17,6 +17,19 @@ EXCEL_MIME_TYPE = [
         "application/vnd.ms-excel",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         ]
+
+class CustomHTTPException(HTTPException):
+    def __init__(self, status_code: int = 400, detail: str = None):
+        super().__init__(status_code=status_code, detail=detail)
+
+async def get_cleaned_data():
+    if cleaned_data is None:
+        raise CustomHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No data was uploaded"
+        )
+
+    return cleaned_data
 
 @app.post("/clean-internal-dataset")
 async def upload(file: UploadFile | None = None):
@@ -49,13 +62,9 @@ async def upload(file: UploadFile | None = None):
 
     return response
 
+# Gráfica de barras (Número de certificaciones totales y número de certificaciones que hicieron match con cursos)
 @app.get("/graph1")
-async def graph1():
-    if cleaned_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No data was uploaded"
-        )
+async def graph1(cleaned_data: pd.DataFrame = Depends(get_cleaned_data)):
     certifications = list(cleaned_data['certification'].unique())
 
     cert_match_count = calculate_certification_counts(certifications)
@@ -71,13 +80,9 @@ async def graph1():
     
     return dataF
 
+# Gráfica de barras (Top 10 certificaciones con más match en cursos)
 @app.get("/graph2")
-async def graph2():
-    if cleaned_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No data was uploaded"
-        )
+async def graph2(cleaned_data: pd.DataFrame = Depends(get_cleaned_data)):
     certifications = list(cleaned_data['certification'].unique())
 
     cert_match_count = calculate_certification_counts(certifications)
@@ -100,14 +105,9 @@ async def graph2():
 
     return dataF
 
+# Gráfica de barras (Top 10 cursos más populares)
 @app.get("/graph3")
-async def graph3():
-    if cleaned_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No data was uploaded"
-        )
-    
+async def graph3(cleaned_data: pd.DataFrame = Depends(get_cleaned_data)):
     ucourses = get_popular_courses()
     top = 10
 
@@ -126,14 +126,9 @@ async def graph3():
     
     return dataF
 
+# Gráfica de barras (certificaciones a través de los años)
 @app.get("/graph4")
-async def graph4():
-    if cleaned_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No data was uploaded"
-        )
-    
+async def graph4(cleaned_data: pd.DataFrame = Depends(get_cleaned_data)):
     certifications = (
         cleaned_data[['certification', 'issue_date']]
         .assign(issue_date=lambda df: pd.to_datetime(df['issue_date']).dt.year)
@@ -154,26 +149,19 @@ async def graph4():
     
     return dataF
 
+# Gráfica radar (todas las certificaciones de IBM) 
 @app.get("/graph5")
-async def graph5():
-    if cleaned_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No data was uploaded"
-        )
+async def graph5(cleaned_data: pd.DataFrame = Depends(get_cleaned_data)):
     certifications = list(cleaned_data['certification'].unique())
     dataF = get_certifications_data(certifications)
 
     return dataF
 
+# Gráfica radar (certificaciones de un usuario)
 @app.get("/graph6{uid}")
-async def graph6(uid: str):
-    if cleaned_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No data was uploaded"
-        )
+async def graph6(uid: str, cleaned_data: pd.DataFrame = Depends(get_cleaned_data)): 
     certifications = get_certifications(cleaned_data, uid)
     dataF = get_certifications_data(certifications)
 
     return dataF
+
