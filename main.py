@@ -62,8 +62,8 @@ async def upload(file: UploadFile | None = None):
 
     return response
 
-# Gráfica de barras (Número de certificaciones totales y número de certificaciones que hicieron match con cursos)
-@app.get("/graph1")
+# Bar graph (Number of total certifications and number of certifications that matched with courses)
+@app.get("/number-of-matched-certifications-graph")
 async def graph1(cleaned_data: pd.DataFrame = Depends(get_cleaned_data)):
     certifications = list(cleaned_data['certification'].unique())
 
@@ -80,8 +80,8 @@ async def graph1(cleaned_data: pd.DataFrame = Depends(get_cleaned_data)):
     
     return dataF
 
-# Gráfica de barras (Top 10 certificaciones con más match en cursos)
-@app.get("/graph2")
+# Bar graph (Top 10 certifications with more matches in courses)
+@app.get("/top-certifications-graph")
 async def graph2(cleaned_data: pd.DataFrame = Depends(get_cleaned_data)):
     certifications = list(cleaned_data['certification'].unique())
 
@@ -105,8 +105,8 @@ async def graph2(cleaned_data: pd.DataFrame = Depends(get_cleaned_data)):
 
     return dataF
 
-# Gráfica de barras (Top 10 cursos más populares)
-@app.get("/graph3")
+# Bar graph (Top 10 most popular courses)
+@app.get("/top-courses-graph")
 async def graph3(cleaned_data: pd.DataFrame = Depends(get_cleaned_data)):
     ucourses = get_popular_courses()
     top = 10
@@ -126,8 +126,8 @@ async def graph3(cleaned_data: pd.DataFrame = Depends(get_cleaned_data)):
     
     return dataF
 
-# Gráfica de barras (certificaciones a través de los años)
-@app.get("/graph4")
+# Bar graph (Number of certifications over the years)
+@app.get("/over-the-years-graph")
 async def graph4(cleaned_data: pd.DataFrame = Depends(get_cleaned_data)):
     certifications = (
         cleaned_data[['certification', 'issue_date']]
@@ -149,19 +149,18 @@ async def graph4(cleaned_data: pd.DataFrame = Depends(get_cleaned_data)):
     
     return dataF
 
-# Gráfica radar (todas las certificaciones de IBM) 
-@app.get("/graph5")
+# Radar Graph (IBM categorized certifications) 
+@app.get("/all-categorized-certifications-graph")
 async def graph5(cleaned_data: pd.DataFrame = Depends(get_cleaned_data)):
     certifications = list(cleaned_data['certification'].unique())
     dataF = get_certifications_data(certifications)
 
     return dataF
 
-# Gráfica radar (certificaciones de un usuario)
-@app.get("/graph6{uid}")
+# Radar Graph (IBM categorized certifications by employees uid)
+@app.get("/{uid}-categorized-certifications-graph")
 async def graph6(uid: str, cleaned_data: pd.DataFrame = Depends(get_cleaned_data)): 
     certifications = get_certifications(cleaned_data, uid)
     dataF = get_certifications_data(certifications)
 
     return dataF
-
