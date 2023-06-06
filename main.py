@@ -1,11 +1,13 @@
 from fastapi.exceptions import HTTPException
 import magic
-from fastapi import FastAPI, UploadFile, status, HTTPException
-from fastapi.responses import StreamingResponse
+from io import BytesIO 
+from fastapi import FastAPI, UploadFile, status, HTTPException, Form
+from fastapi.responses import StreamingResponse, JSONResponse
 import pandas as pd
 
 from udemy_api import get_popular_courses
-from data_processing import clean_dataset, convert_df_to_csv_string, read_excel_file
+from data_processing import clean_dataset, convert_df_to_csv_string, read_excel_file, get_most_attended_certifications
+from dto import MostAttendedCertificationsRequestDTO
 
 app = FastAPI()
 
@@ -18,6 +20,7 @@ EXCEL_MIME_TYPE = [
         "application/vnd.ms-excel",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         ]
+
 
 @app.post("/clean-internal-dataset")
 async def upload(file: UploadFile | None = None):
@@ -36,7 +39,7 @@ async def upload(file: UploadFile | None = None):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"File type is not supported: {file_type}"
         )
-    
+
     df = read_excel_file(content)
     df = clean_dataset(df)
     csv_string = convert_df_to_csv_string(df)
@@ -49,6 +52,7 @@ async def upload(file: UploadFile | None = None):
     cleaned_data = df
 
     return response
+
 
 @app.get("/graph1")
 async def graph1():
@@ -80,7 +84,7 @@ async def graph1():
 
                     else:
                         word_match_count[word] = 1
-        
+
     cert_total_count = len(certifications)
 
     graphData = {
@@ -90,5 +94,45 @@ async def graph1():
 
     dataF = pd.DataFrame(graphData)
     dataF = dataF.to_dict(orient='records')
-    
+
     return dataF
+
+
+async def get_dataframe_from_csv_file(file: UploadFile):
+    csv_content = await file.read()
+    csv = BytesIO(csv_content)
+    df = pd.read_csv(csv)
+    return df
+
+
+@app.post("/graphs/query-most-attended-certifications")
+async def query_most_attended_certifications(
+        dataset: UploadFile | None = None,
+        limit: int = Form(...),
+        since_years: int = Form(...),
+        ):
+    print("the limit is: ", limit, "the since_years is: ", since_years)
+    if not dataset:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No file was uploaded"
+        )
+
+    df = await get_dataframe_from_csv_file(dataset)
+    most_attended_certifications = get_most_attended_certifications(df, limit, since_years)
+
+    response_payload = {
+            "count": len(most_attended_certifications),
+            "certifications": []
+            }
+
+    for certification in most_attended_certifications:
+        response_payload["certifications"].append({
+            "name": certification.name,
+            "total_attendees": certification.total_attendees
+            })
+
+    return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=response_payload
+            )
