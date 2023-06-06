@@ -1,13 +1,13 @@
 from fastapi.exceptions import HTTPException
 import magic
-from io import BytesIO 
-from fastapi import FastAPI, UploadFile, status, HTTPException, Form
+from io import BytesIO
+from fastapi import FastAPI, UploadFile, status, Form
 from fastapi.responses import StreamingResponse, JSONResponse
 import pandas as pd
-
 from udemy_api import get_popular_courses
-from data_processing import clean_dataset, convert_df_to_csv_string, read_excel_file, get_most_attended_certifications
-from dto import MostAttendedCertificationsRequestDTO
+from data_processing import clean_dataset, convert_df_to_csv_string, \
+    read_excel_file, get_most_attended_certifications, \
+    calculate_certification_counts
 
 app = FastAPI()
 
@@ -54,50 +54,6 @@ async def upload(file: UploadFile | None = None):
     return response
 
 
-@app.get("/graph1")
-async def graph1():
-    if cleaned_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No data was uploaded"
-        )
-    certifications = list(cleaned_data['certification'].unique())
-
-    cert_match_count = set()
-    word_match_count = {}
-
-    udemy_courses = get_popular_courses()
-
-
-    for ucourse in udemy_courses[0]:
-        ucourse_words = ucourse.split(' ')
-        for certification in certifications:
-            certification_words = certification.split(' ')
-            for word in certification_words:
-                if word not in excluded_words and word in ucourse_words:
-
-                    if certification not in cert_match_count:
-                        cert_match_count.add(certification)
-
-                    if word in word_match_count:
-                        word_match_count[word] += 1
-
-                    else:
-                        word_match_count[word] = 1
-
-    cert_total_count = len(certifications)
-
-    graphData = {
-        'group': ['Certificaciones Totales', 'Certificaciones con Match en Cursos'],
-        'cantidad': [cert_total_count, len(cert_match_count)]
-    }
-
-    dataF = pd.DataFrame(graphData)
-    dataF = dataF.to_dict(orient='records')
-
-    return dataF
-
-
 async def get_dataframe_from_csv_file(file: UploadFile):
     csv_content = await file.read()
     csv = BytesIO(csv_content)
@@ -131,6 +87,34 @@ async def query_most_attended_certifications(
             "name": certification.name,
             "total_attendees": certification.total_attendees
             })
+
+    return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=response_payload
+            )
+
+
+@app.post("/graphs/query-matched-certifications")
+async def query_matched_certifications(dataset: UploadFile | None = None):
+    if not dataset:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No file was uploaded"
+        )
+
+    df = await get_dataframe_from_csv_file(dataset)
+
+    certifications = list(df['certification'].unique())
+
+    cert_match_count = calculate_certification_counts(certifications)
+    cert_total_count = len(certifications)
+
+    response_payload = {
+            "total_certifications_analysed": cert_total_count,
+            "number_of_matched_certifications": cert_match_count,
+            "number_of_unmatched_certifications": (cert_total_count
+                                                   - cert_match_count)
+            }
 
     return JSONResponse(
             status_code=status.HTTP_200_OK,

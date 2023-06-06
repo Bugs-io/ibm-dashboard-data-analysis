@@ -5,6 +5,8 @@ import openpyxl
 from pandas import DataFrame
 
 from domain import Certification
+from udemy_api import get_popular_courses
+from utils import EXCLUDED_WORDS
 
 
 def clean_dataset(df):
@@ -80,3 +82,22 @@ def read_excel_file(content):
         df = df.rename(columns={i: col})
 
     return df
+
+
+def calculate_certification_counts(certifications):
+    cert_match_count = set()
+
+    udemy_courses = get_popular_courses()
+
+    for ucourse in udemy_courses[0]:
+        ucourse_words = set(ucourse.split(' '))
+        for certification in certifications:
+            certification_words = set(certification.split(' '))
+            for word in certification_words:
+                if word in EXCLUDED_WORDS:
+                    continue
+                if word in ucourse_words:
+                    cert_match_count.add(certification)
+                    break
+
+    return len(cert_match_count)
