@@ -1,3 +1,4 @@
+import re
 import io
 import pandas as pd
 import difflib
@@ -6,6 +7,7 @@ import openpyxl
 from pandas import DataFrame
 
 from domain import Certification
+from utils import CATEGORIES
 
 
 def clean_dataset(df):
@@ -134,3 +136,45 @@ def get_matched_certifications(certifications_df: pd.DataFrame, udemy_courses_df
     sorted_df = sorted_df.reset_index(drop=True)
 
     return sorted_df
+
+
+def get_categories(certifications):
+    results = {}
+    for certification in certifications:
+        matched = False
+        for category, keywords in CATEGORIES.items():
+            pattern = r"\b(" + "|".join(keywords) + r")\b"
+            if re.search(pattern, certification, flags=re.IGNORECASE):
+                if category not in results:
+                    results[category] = 1
+                else:
+                    results[category] += 1
+                matched = True
+                break
+        if not matched:
+            if "Other" not in results:
+                results["Other"] = 1
+            else:
+                results["Other"] += 1
+    return results
+
+
+def get_certifications(data, uid):
+    certifications = []
+    for index, row in data.iterrows():
+        if row['uid'] == uid:
+            certifications.append(row['certification'])
+    return certifications
+
+
+def get_certifications_data(certifications):
+    categories_data = get_categories(certifications)
+    data = []
+    for category in CATEGORIES:
+        count = categories_data.get(category, 0)
+        data.append({
+            "uid": "IBM",
+            "category": category,
+            "certifications": count
+        })
+    return data

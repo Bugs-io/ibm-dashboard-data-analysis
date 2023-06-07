@@ -1,13 +1,13 @@
 from fastapi.exceptions import HTTPException
 import magic
 from io import BytesIO
-from fastapi import FastAPI, UploadFile, status, Form, Depends
+from fastapi import FastAPI, UploadFile, status, Form
 from fastapi.responses import StreamingResponse, JSONResponse
 import pandas as pd
 from udemy_api import get_popular_courses_df
 from data_processing import clean_dataset, convert_df_to_csv_string, \
     read_excel_file, get_most_attended_certifications, \
-    get_matched_certifications
+    get_matched_certifications, get_certifications, get_certifications_data
 
 app = FastAPI()
 
@@ -102,8 +102,9 @@ async def query_matched_certifications(dataset: UploadFile | None = None):
     certification_df = await get_dataframe_from_csv_file(dataset)
     udemy_courses_df = get_popular_courses_df()
 
-
-    matched_certifications_df = get_matched_certifications(certification_df, udemy_courses_df)
+    matched_certifications_df = get_matched_certifications(
+            certification_df,
+            udemy_courses_df)
 
     cert_match_count = len(matched_certifications_df)
     cert_total_count = len(certification_df['certification'].unique())
@@ -144,3 +145,21 @@ async def query_top_industry_courses():
         status_code=status.HTTP_200_OK,
         content=response_payload
     )
+
+
+# Radar Graph (IBM categorized certifications by employees uid)
+@app.post("/employees/{employee_id}/certifications-categorized")
+async def get_employee_certifications_categorized(
+        dataset: UploadFile,
+        employee_id: str):
+    if not dataset:
+        raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No file was uploaded"
+                )
+
+    certification_df = await get_dataframe_from_csv_file(dataset)
+    certifications = get_certifications(certification_df, employee_id)
+    dataF = get_certifications_data(certifications)
+
+    return dataF
