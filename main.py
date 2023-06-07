@@ -129,7 +129,7 @@ async def query_top_industry_courses():
 
     ucourses["num_subscribers"] = ucourses["num_subscribers"].astype(int)
     ucourses = ucourses.drop_duplicates(subset=["title"])
-    ucourses = ucourses.sort_values(by=["title"], ascending=False)
+    ucourses = ucourses.sort_values(by=["num_subscribers"], ascending=False)
 
     topcourses = ucourses.head(top)
     response_payload = []
