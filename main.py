@@ -1,7 +1,7 @@
 from fastapi.exceptions import HTTPException
 import magic
 from io import BytesIO
-from fastapi import FastAPI, UploadFile, status, Form
+from fastapi import FastAPI, UploadFile, status, Form, Depends
 from fastapi.responses import StreamingResponse, JSONResponse
 import pandas as pd
 from udemy_api import get_popular_courses
@@ -120,3 +120,28 @@ async def query_matched_certifications(dataset: UploadFile | None = None):
             status_code=status.HTTP_200_OK,
             content=response_payload
             )
+
+
+# Bar graph (Top 10 most popular courses)
+@app.get("/graphs/top-industry-courses")
+async def query_top_industry_courses():
+    ucourses = get_popular_courses()
+    top = 10
+
+    ucourses[1] = ucourses[1].astype(int)
+    ucourses = ucourses.drop_duplicates(subset=[0])
+    ucourses = ucourses.sort_values(by=[1], ascending=False)
+    
+    topcourses = ucourses.head(top)
+    response_payload = []
+
+    for i in range(top):
+        response_payload.append({
+            'group': topcourses.iloc[i][0],
+            'value': int(topcourses.iloc[i][1])
+        })
+    
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=response_payload
+    )
