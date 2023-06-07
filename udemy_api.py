@@ -1,17 +1,22 @@
-import json
 import requests
 import pandas as pd
 
-def get_popular_courses():
-    url = 'https://www.udemy.com/api-2.0/courses/'
+UDEMY_API_URL = "https://www.udemy.com/api-2.0"
+
+
+def append_to_df(df: pd.DataFrame, new_row: dict) -> pd.DataFrame:
+    return pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+
+
+def get_popular_courses_df() -> pd.DataFrame:
     params = {
-        'category': 'Development',
-        'sort': 'popularity',
-        'instructional_level': 'expert',
-        'language': 'en',
-        'fields[course]': 'title,headline,url,price,primary_category,num_subscribers,avg_rating',
-        'page': 1,  # Página a obtener
-        'page_size': 10  # Máximo de cursos a obtener por página
+        "category": "Development",
+        "sort": "popularity",
+        "instructional_level": "expert",
+        "language": "en",
+        "fields[course]": "title,num_subscribers",
+        "page": 1,
+        "page_size": 10
     }
     headers = {
         "Accept": "application/json, text/plain, */*",
@@ -19,21 +24,19 @@ def get_popular_courses():
         "Content-Type": "application/json"
     }
 
-    response = requests.get(url, params=params, headers=headers, timeout=5)
-    data = json.loads(response.text)
+    response = requests.get(f"{UDEMY_API_URL}/courses/", params=params, headers=headers, timeout=5)
+    data = response.json()
 
-    popular_courses = []
+    popular_courses_df = pd.DataFrame(columns=["title", "num_subscribers"])
 
-    # Cambiamos de páginas hasta que no haya más cursos
-    while 'next' in data and params['page'] < 21:
-        response = requests.get(data['next'], headers=headers)
-        data = json.loads(response.text)
-        params['page'] += 1
+    while "next" in data and params["page"] < 15:
+        response = requests.get(data["next"], headers=headers)
+        data = response.json()
+        params["page"] += 1
 
-        for course in data['results']:
-            if course['num_subscribers'] > 1000:
-                popular_courses.append([course['title'], course['num_subscribers']])
+        for course in data["results"]:
+            if course["num_subscribers"] > 1000:
+                new_row = {"title": course["title"], "num_subscribers": course["num_subscribers"]}
+                popular_courses_df = append_to_df(popular_courses_df, new_row)
 
-    udemy_courses = pd.DataFrame(popular_courses)
-
-    return udemy_courses
+    return popular_courses_df

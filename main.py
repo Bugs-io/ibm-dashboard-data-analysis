@@ -4,17 +4,14 @@ from io import BytesIO
 from fastapi import FastAPI, UploadFile, status, Form, Depends
 from fastapi.responses import StreamingResponse, JSONResponse
 import pandas as pd
-from udemy_api import get_popular_courses
+from udemy_api import get_popular_courses_df
 from data_processing import clean_dataset, convert_df_to_csv_string, \
     read_excel_file, get_most_attended_certifications, \
-    calculate_certification_counts
+    get_matched_certifications
 
 app = FastAPI()
 
 cleaned_data = None
-
-excluded_words = ['Exam', 'Intermediate', 'Guide', 'Project', 'Level', 'Functional', 'Content', 'Support', 'Professional', 'by', 'Streams', 'Framework', 'Portal', 'Language', '10', '2019', '2020', '2021', '2022', '2023', 'Programming', 'Application', '&', 'Using', 'Working', 'Environment', 'The', 'Way', 'Build', 'Part', 'a', 'an', 'and', 'of', 'the', 'to',
-                  'with', 'With', 'Building', 'A', 'Applications', 'App', 'Market', 'Software', 'Advanced', 'Parallel', 'Coding', 'Web', '1', '2', '3', 'Learning', 'Introduction', 'Development', 'in', '-', 'Server', 'Studio', 'Practice', 'your', 'for', 'using', 'from', ' ', '', 'on', 'us', 'Visualization']
 
 EXCEL_MIME_TYPE = [
         "application/vnd.ms-excel",
@@ -102,12 +99,14 @@ async def query_matched_certifications(dataset: UploadFile | None = None):
             detail="No file was uploaded"
         )
 
-    df = await get_dataframe_from_csv_file(dataset)
+    certification_df = await get_dataframe_from_csv_file(dataset)
+    udemy_courses_df = get_popular_courses_df()
 
-    certifications = list(df['certification'].unique())
 
-    cert_match_count = calculate_certification_counts(certifications)
-    cert_total_count = len(certifications)
+    matched_certifications_df = get_matched_certifications(certification_df, udemy_courses_df)
+
+    cert_match_count = len(matched_certifications_df)
+    cert_total_count = len(certification_df)
 
     response_payload = {
             "total_certifications_analysed": cert_total_count,
@@ -125,13 +124,13 @@ async def query_matched_certifications(dataset: UploadFile | None = None):
 # Bar graph (Top 10 most popular courses)
 @app.get("/graphs/top-industry-courses")
 async def query_top_industry_courses():
-    ucourses = get_popular_courses()
+    ucourses = get_popular_courses_df()
     top = 10
 
-    ucourses[1] = ucourses[1].astype(int)
-    ucourses = ucourses.drop_duplicates(subset=[0])
-    ucourses = ucourses.sort_values(by=[1], ascending=False)
-    
+    ucourses["num_subscribers"] = ucourses["num_subscribers"].astype(int)
+    ucourses = ucourses.drop_duplicates(subset=["title"])
+    ucourses = ucourses.sort_values(by=["title"], ascending=False)
+
     topcourses = ucourses.head(top)
     response_payload = []
 
@@ -140,7 +139,7 @@ async def query_top_industry_courses():
             'group': topcourses.iloc[i][0],
             'value': int(topcourses.iloc[i][1])
         })
-    
+
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=response_payload

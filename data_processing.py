@@ -1,12 +1,11 @@
 import io
 import pandas as pd
+import difflib
 from fastapi import status, HTTPException
 import openpyxl
 from pandas import DataFrame
 
 from domain import Certification
-from udemy_api import get_popular_courses
-from utils import EXCLUDED_WORDS
 
 
 def clean_dataset(df):
@@ -84,20 +83,54 @@ def read_excel_file(content):
     return df
 
 
-def calculate_certification_counts(certifications):
-    cert_match_count = set()
+SIMILARITY_THRESHOLD = 0.5
 
-    udemy_courses = get_popular_courses()
 
-    for ucourse in udemy_courses[0]:
-        ucourse_words = set(ucourse.split(' '))
-        for certification in certifications:
-            certification_words = set(certification.split(' '))
-            for word in certification_words:
-                if word in EXCLUDED_WORDS:
-                    continue
-                if word in ucourse_words:
-                    cert_match_count.add(certification)
-                    break
+def calculate_similarity_score(certification: str, udemy_courses: list, threshold: float) -> (str, float):
+    matches = difflib.get_close_matches(certification, udemy_courses, n=1, cutoff=threshold)
+    if matches:
+        similarity_score = difflib.SequenceMatcher(None, certification, matches[0]).ratio()
+        return (matches[0], similarity_score)
+    else:
+        return ("", 0.0)
 
-    return len(cert_match_count)
+
+def calculate_similarity_scores(certifications: list, udemy_courses: list, threshold: float) -> pd.DataFrame:
+    similarity_scores = []
+    for certification in certifications:
+        matched_course, similarity_score = calculate_similarity_score(
+                certification,
+                udemy_courses,
+                threshold
+                )
+
+        if similarity_score >= threshold:
+            similarity_scores.append((certification, matched_course, similarity_score))
+
+    similarity_scores_df = pd.DataFrame(
+            similarity_scores,
+            columns=['ibm_certification', 'udemy_course', 'similarity_score']
+            )
+
+    return similarity_scores_df
+
+
+def get_matched_certifications(certifications_df: pd.DataFrame, udemy_courses_df: pd.DataFrame):
+    certifications = certifications_df["certification"]
+    certifications = certifications.unique()
+    certifications = certifications.tolist()
+
+    udemy_courses = udemy_courses_df["title"]
+    udemy_courses = udemy_courses.unique()
+    udemy_courses = udemy_courses.tolist()
+
+    similarity_scores_df = calculate_similarity_scores(
+            certifications,
+            udemy_courses,
+            SIMILARITY_THRESHOLD
+            )
+
+    sorted_df = similarity_scores_df.sort_values(by='similarity_score', ascending=False)
+    sorted_df = sorted_df.reset_index(drop=True)
+
+    return sorted_df
