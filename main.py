@@ -106,7 +106,7 @@ async def query_matched_certifications(dataset: UploadFile | None = None):
     matched_certifications_df = get_matched_certifications(certification_df, udemy_courses_df)
 
     cert_match_count = len(matched_certifications_df)
-    cert_total_count = len(certification_df)
+    cert_total_count = len(certification_df['certification'].unique())
 
     response_payload = {
             "total_certifications_analysed": cert_total_count,
