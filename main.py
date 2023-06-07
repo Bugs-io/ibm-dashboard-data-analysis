@@ -64,7 +64,6 @@ async def query_most_attended_certifications(
         limit: int = Form(...),
         since_years: int = Form(...),
         ):
-    print("the limit is: ", limit, "the since_years is: ", since_years)
     if not dataset:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -163,3 +162,33 @@ async def get_employee_certifications_categorized(
     dataF = get_certifications_data(certifications)
 
     return dataF
+
+
+@app.post("/graphs/over-the-years")
+async def over_the_years(dataset: UploadFile | None = None):
+    if not dataset:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No file was uploaded"
+        )
+
+    certifications_df = await get_dataframe_from_csv_file(dataset)
+    certifications_df["issue_year"] = pd.to_datetime(certifications_df["issue_date"]).dt.year
+
+    taken_certifications_df = certifications_df[["certification", "issue_year"]]\
+        .groupby("issue_year")\
+        .count()\
+        .reset_index()
+
+    result = []
+
+    for index, row in taken_certifications_df.iterrows():
+        result.append({
+            "year": int(row["issue_year"]),
+            "taken_certifications": int(row["certification"])
+        })
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=result
+    )
