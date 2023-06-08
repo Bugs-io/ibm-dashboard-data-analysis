@@ -1,4 +1,6 @@
 import re
+from fastapi import status
+from fastapi.exceptions import HTTPException
 
 categories = {
     "Software Development": ["developer", "db", "dba", "containers", "database", "databases", "koder", "testing", "tester", "development", "microservices", "blockchain", "software development", "web development", "mobile development", "user experience", "ui", "ux", "software engineering", "linux", "software architecture", "agile development", "version control", "software testing", "html", "django", "javascript", "node.js", "sun", "react", "angular", "java", "api"],
@@ -34,15 +36,21 @@ def get_certifications(data, uid):
     for index, row in data.iterrows():
         if row['uid'] == uid:
             certifications.append(row['certification'])
+    if len(certifications) == 0:
+        raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid uid"
+            )
+            
     return certifications
 
-def get_certifications_data(certifications):
+def get_certifications_data(certifications, uid):
     categories_data = get_categories(certifications)
     data = []
     for category in categories:
         count = categories_data.get(category, 0)
         data.append({
-            "uid": "IBM",
+            "uid": uid,
             "category": category,
             "certifications": count
         })
