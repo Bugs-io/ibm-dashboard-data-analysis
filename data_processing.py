@@ -167,13 +167,13 @@ def get_certifications(data, uid):
     return certifications
 
 
-def get_certifications_data(certifications):
+def get_certifications_data(certifications, uid="IBM"):
     categories_data = get_categories(certifications)
     data = []
     for category in CATEGORIES:
         count = categories_data.get(category, 0)
         data.append({
-            "uid": "IBM",
+            "uid": uid,
             "category": category,
             "certifications": count
         })

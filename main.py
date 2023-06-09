@@ -159,7 +159,7 @@ async def get_employee_certifications_categorized(
 
     certification_df = await get_dataframe_from_csv_file(dataset)
     certifications = get_certifications(certification_df, employee_id)
-    dataF = get_certifications_data(certifications)
+    dataF = get_certifications_data(certifications, employee_id)
 
     return dataF
 
