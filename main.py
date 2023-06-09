@@ -192,3 +192,18 @@ async def over_the_years(dataset: UploadFile | None = None):
         status_code=status.HTTP_200_OK,
         content=result
     )
+
+@app.post("/graphs/certifications-categorized")
+async def get_certifications_categorized(dataset: UploadFile | None = None):
+    if not dataset:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No file was uploaded"
+        )
+    
+    df = await get_dataframe_from_csv_file(dataset)
+
+    certifications = list(df['certification'].unique())
+    response_payload = get_certifications_data(certifications)
+
+    return response_payload
