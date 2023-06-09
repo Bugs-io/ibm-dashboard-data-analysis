@@ -7,7 +7,9 @@ import pandas as pd
 from udemy_api import get_popular_courses_df
 from data_processing import clean_dataset, convert_df_to_csv_string, \
     read_excel_file, get_most_attended_certifications, \
-    get_matched_certifications, get_certifications, get_certifications_data
+    get_matched_certifications, get_certifications, get_certifications_data, \
+    get_certifications_distribution
+
 
 app = FastAPI()
 
@@ -193,17 +195,31 @@ async def over_the_years(dataset: UploadFile | None = None):
         content=result
     )
 
+
 @app.post("/graphs/certifications-categorized")
 async def get_certifications_categorized(dataset: UploadFile | None = None):
-    if not dataset:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No file was uploaded"
-        )
-    
     df = await get_dataframe_from_csv_file(dataset)
 
     certifications = list(df['certification'].unique())
     response_payload = get_certifications_data(certifications)
 
     return response_payload
+
+
+@app.post("/graphs/certifications-distribution")
+async def certifications_distribution(dataset: UploadFile | None = None):
+    if not dataset:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No file was uploaded"
+        )
+
+    certifications_df = await get_dataframe_from_csv_file(dataset)
+    certifications = certifications_df["certification"].unique().tolist()
+
+    certifications_distribution = get_certifications_distribution(certifications)
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=certifications_distribution
+    )

@@ -178,3 +178,17 @@ def get_certifications_data(certifications, uid="IBM"):
             "certifications": count
         })
     return data
+
+
+def get_certifications_distribution(certifications):
+    categories = get_categories(certifications)
+    data = []
+
+    for name, count in categories.items():
+        data.append({
+            "uid": "IBM",
+            "category": name,
+            "certifications": count
+        })
+
+    return data
